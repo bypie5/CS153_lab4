@@ -14912,25 +14912,25 @@ int shm_open(int id, char **pointer) {
 	if (id_exists && entry_index != -1) {
 		// Case 1
 		uint va = PGROUNDUP(curproc->sz);
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
+		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
 80106d2c:	8d 1c 5b             	lea    (%ebx,%ebx,2),%ebx
 80106d2f:	c1 e3 02             	shl    $0x2,%ebx
 	struct proc *curproc = myproc();
 80106d32:	89 c6                	mov    %eax,%esi
 		uint va = PGROUNDUP(curproc->sz);
 80106d34:	8b 00                	mov    (%eax),%eax
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
+		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
 80106d36:	c7 44 24 10 06 00 00 	movl   $0x6,0x10(%esp)
 80106d3d:	00 
 80106d3e:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
 80106d45:	00 
 		uint va = PGROUNDUP(curproc->sz);
 80106d46:	8d b8 ff 0f 00 00    	lea    0xfff(%eax),%edi
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
+		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
 80106d4c:	8b 83 f8 54 11 80    	mov    -0x7feeab08(%ebx),%eax
 		uint va = PGROUNDUP(curproc->sz);
 80106d52:	81 e7 00 f0 ff ff    	and    $0xfffff000,%edi
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
+		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
 80106d58:	89 7c 24 04          	mov    %edi,0x4(%esp)
 80106d5c:	05 00 00 00 80       	add    $0x80000000,%eax
 80106d61:	89 44 24 0c          	mov    %eax,0xc(%esp)

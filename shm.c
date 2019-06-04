@@ -47,7 +47,7 @@ int shm_open(int id, char **pointer) {
 	if (id_exists && entry_index != -1) {
 		// Case 1
 		uint va = PGROUNDUP(curproc->sz);
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
+		mappages(curproc->pgdir, (void*) va, PGSIZE, V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
 		shm_table.shm_pages[entry_index].refcnt++;
 
 		// Return the pointer to the virtual address
