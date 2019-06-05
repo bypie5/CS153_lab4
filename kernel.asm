@@ -10290,7 +10290,7 @@ int sys_shm_close(void) {
   return shm_close(id);
 8010527d:	8b 45 f4             	mov    -0xc(%ebp),%eax
 80105280:	89 04 24             	mov    %eax,(%esp)
-80105283:	e8 c8 1b 00 00       	call   80106e50 <shm_close>
+80105283:	e8 d8 1b 00 00       	call   80106e60 <shm_close>
 }
 80105288:	c9                   	leave  
 80105289:	c3                   	ret    
@@ -14877,218 +14877,231 @@ int shm_open(int id, char **pointer) {
 80106cf3:	57                   	push   %edi
 80106cf4:	56                   	push   %esi
 80106cf5:	53                   	push   %ebx
+80106cf6:	83 ec 2c             	sub    $0x2c,%esp
+80106cf9:	8b 5d 08             	mov    0x8(%ebp),%ebx
 	acquire(&(shm_table.lock));	
+80106cfc:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
+80106d03:	e8 48 d4 ff ff       	call   80104150 <acquire>
 
-	int id_exists = 0;
-	int entry_index = -1;
+	struct proc *curproc = myproc();
+80106d08:	e8 a3 c9 ff ff       	call   801036b0 <myproc>
+80106d0d:	b9 f4 54 11 80       	mov    $0x801154f4,%ecx
+
 	int i = 0;	
 	for (i = 0; i < 64; i++) {
-80106cf6:	31 db                	xor    %ebx,%ebx
-int shm_open(int id, char **pointer) {
-80106cf8:	83 ec 2c             	sub    $0x2c,%esp
-80106cfb:	8b 75 08             	mov    0x8(%ebp),%esi
-	acquire(&(shm_table.lock));	
-80106cfe:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
-80106d05:	e8 46 d4 ff ff       	call   80104150 <acquire>
-80106d0a:	b8 f4 54 11 80       	mov    $0x801154f4,%eax
-80106d0f:	eb 12                	jmp    80106d23 <shm_open+0x33>
-80106d11:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+80106d12:	31 d2                	xor    %edx,%edx
+	struct proc *curproc = myproc();
+80106d14:	89 c6                	mov    %eax,%esi
+80106d16:	eb 0b                	jmp    80106d23 <shm_open+0x33>
 	for (i = 0; i < 64; i++) {
-80106d18:	83 c3 01             	add    $0x1,%ebx
-80106d1b:	83 c0 0c             	add    $0xc,%eax
-80106d1e:	83 fb 40             	cmp    $0x40,%ebx
+80106d18:	83 c2 01             	add    $0x1,%edx
+80106d1b:	83 c1 0c             	add    $0xc,%ecx
+80106d1e:	83 fa 40             	cmp    $0x40,%edx
 80106d21:	74 75                	je     80106d98 <shm_open+0xa8>
 		if (id == shm_table.shm_pages[i].id) {
-80106d23:	39 30                	cmp    %esi,(%eax)
+80106d23:	3b 19                	cmp    (%ecx),%ebx
 80106d25:	75 f1                	jne    80106d18 <shm_open+0x28>
-			entry_index = i;
-			break;
-		}
-	}	
-
-	struct proc *curproc = myproc();
-80106d27:	e8 84 c9 ff ff       	call   801036b0 <myproc>
-
-	if (id_exists && entry_index != -1) {
-		// Case 1
-		uint va = PGROUNDUP(curproc->sz);
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-80106d2c:	8d 1c 5b             	lea    (%ebx,%ebx,2),%ebx
-80106d2f:	c1 e3 02             	shl    $0x2,%ebx
-	struct proc *curproc = myproc();
-80106d32:	89 c6                	mov    %eax,%esi
-		uint va = PGROUNDUP(curproc->sz);
-80106d34:	8b 00                	mov    (%eax),%eax
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-80106d36:	c7 44 24 10 06 00 00 	movl   $0x6,0x10(%esp)
-80106d3d:	00 
-80106d3e:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
-80106d45:	00 
-		uint va = PGROUNDUP(curproc->sz);
-80106d46:	8d b8 ff 0f 00 00    	lea    0xfff(%eax),%edi
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-80106d4c:	8b 83 f8 54 11 80    	mov    -0x7feeab08(%ebx),%eax
-		uint va = PGROUNDUP(curproc->sz);
-80106d52:	81 e7 00 f0 ff ff    	and    $0xfffff000,%edi
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-80106d58:	89 7c 24 04          	mov    %edi,0x4(%esp)
-80106d5c:	05 00 00 00 80       	add    $0x80000000,%eax
-80106d61:	89 44 24 0c          	mov    %eax,0xc(%esp)
-80106d65:	8b 46 04             	mov    0x4(%esi),%eax
-80106d68:	89 04 24             	mov    %eax,(%esp)
-80106d6b:	e8 e0 f7 ff ff       	call   80106550 <mappages>
-		shm_table.shm_pages[entry_index].refcnt++;
-
-		// Return the pointer to the virtual address
-		*pointer=(char *)va;
+			// Case 1
+			char* va = (char*)PGROUNDUP(curproc->sz);
+80106d27:	8b 06                	mov    (%esi),%eax
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+80106d29:	8d 3c 52             	lea    (%edx,%edx,2),%edi
+80106d2c:	c1 e7 02             	shl    $0x2,%edi
+80106d2f:	c7 44 24 10 06 00 00 	movl   $0x6,0x10(%esp)
+80106d36:	00 
+80106d37:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
+80106d3e:	00 
+			char* va = (char*)PGROUNDUP(curproc->sz);
+80106d3f:	8d 98 ff 0f 00 00    	lea    0xfff(%eax),%ebx
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+80106d45:	8b 87 f8 54 11 80    	mov    -0x7feeab08(%edi),%eax
+			char* va = (char*)PGROUNDUP(curproc->sz);
+80106d4b:	81 e3 00 f0 ff ff    	and    $0xfffff000,%ebx
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+80106d51:	89 5c 24 04          	mov    %ebx,0x4(%esp)
+80106d55:	05 00 00 00 80       	add    $0x80000000,%eax
+80106d5a:	89 44 24 0c          	mov    %eax,0xc(%esp)
+80106d5e:	8b 46 04             	mov    0x4(%esi),%eax
+80106d61:	89 04 24             	mov    %eax,(%esp)
+80106d64:	e8 e7 f7 ff ff       	call   80106550 <mappages>
+			shm_table.shm_pages[i].refcnt++;
+80106d69:	83 87 fc 54 11 80 01 	addl   $0x1,-0x7feeab04(%edi)
+			// memmap and return pointer through parameter
+			char* va = (char*)PGROUNDUP(curproc->sz);
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+			shm_table.shm_pages[i].refcnt = 1;
+		
+			*pointer = va;
 80106d70:	8b 45 0c             	mov    0xc(%ebp),%eax
-		shm_table.shm_pages[entry_index].refcnt++;
-80106d73:	83 83 fc 54 11 80 01 	addl   $0x1,-0x7feeab04(%ebx)
-		*pointer=(char *)va;
-80106d7a:	89 38                	mov    %edi,(%eax)
+80106d73:	89 18                	mov    %ebx,(%eax)
+	
+			curproc->sz += PGSIZE;
+80106d75:	81 06 00 10 00 00    	addl   $0x1000,(%esi)
 
-		// Update sz
-		curproc->sz += PGSIZE;
-80106d7c:	81 06 00 10 00 00    	addl   $0x1000,(%esi)
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-		shm_table.shm_pages[entry_index].refcnt++;
-
+			release(&(shm_table.lock));
+80106d7b:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
+80106d82:	e8 b9 d4 ff ff       	call   80104240 <release>
+		}
 	}
-
+	
 	release(&(shm_table.lock));
-80106d82:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
-80106d89:	e8 b2 d4 ff ff       	call   80104240 <release>
 	return 0; 
 }
-80106d8e:	83 c4 2c             	add    $0x2c,%esp
-80106d91:	31 c0                	xor    %eax,%eax
-80106d93:	5b                   	pop    %ebx
-80106d94:	5e                   	pop    %esi
-80106d95:	5f                   	pop    %edi
-80106d96:	5d                   	pop    %ebp
-80106d97:	c3                   	ret    
-	struct proc *curproc = myproc();
-80106d98:	e8 13 c9 ff ff       	call   801036b0 <myproc>
-80106d9d:	ba f4 54 11 80       	mov    $0x801154f4,%edx
-80106da2:	31 c9                	xor    %ecx,%ecx
-80106da4:	89 c3                	mov    %eax,%ebx
-80106da6:	eb 0f                	jmp    80106db7 <shm_open+0xc7>
-		for (i = 0; i < 64; i++) {
-80106da8:	83 c1 01             	add    $0x1,%ecx
-80106dab:	83 c2 0c             	add    $0xc,%edx
-80106dae:	83 f9 40             	cmp    $0x40,%ecx
+80106d87:	83 c4 2c             	add    $0x2c,%esp
+80106d8a:	31 c0                	xor    %eax,%eax
+80106d8c:	5b                   	pop    %ebx
+80106d8d:	5e                   	pop    %esi
+80106d8e:	5f                   	pop    %edi
+80106d8f:	5d                   	pop    %ebp
+80106d90:	c3                   	ret    
+80106d91:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+	for (i = 0; i < 64; i++) {
+80106d98:	b8 f4 54 11 80       	mov    $0x801154f4,%eax
+80106d9d:	30 d2                	xor    %dl,%dl
+80106d9f:	eb 16                	jmp    80106db7 <shm_open+0xc7>
+80106da1:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+	for (i = 0; i < 64; i++) {
+80106da8:	83 c2 01             	add    $0x1,%edx
+80106dab:	83 c0 0c             	add    $0xc,%eax
+80106dae:	83 fa 40             	cmp    $0x40,%edx
 80106db1:	0f 84 89 00 00 00    	je     80106e40 <shm_open+0x150>
-			if (shm_table.shm_pages[i].id == 0 && shm_table.shm_pages[i].refcnt == 0) {
-80106db7:	8b 3a                	mov    (%edx),%edi
-80106db9:	85 ff                	test   %edi,%edi
+		if (shm_table.shm_pages[i].id == 0) {
+80106db7:	8b 08                	mov    (%eax),%ecx
+80106db9:	85 c9                	test   %ecx,%ecx
 80106dbb:	75 eb                	jne    80106da8 <shm_open+0xb8>
-80106dbd:	8b 42 08             	mov    0x8(%edx),%eax
-80106dc0:	85 c0                	test   %eax,%eax
-80106dc2:	75 e4                	jne    80106da8 <shm_open+0xb8>
-		shm_table.shm_pages[found_index].id = id;
-80106dc4:	8d 3c 49             	lea    (%ecx,%ecx,2),%edi
-80106dc7:	c1 e7 02             	shl    $0x2,%edi
-80106dca:	89 b7 f4 54 11 80    	mov    %esi,-0x7feeab0c(%edi)
-		shm_table.shm_pages[found_index].frame = kalloc();
-80106dd0:	e8 db b6 ff ff       	call   801024b0 <kalloc>
-		memset(shm_table.shm_pages[found_index].frame, 0, PGSIZE);
-80106dd5:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
-80106ddc:	00 
-80106ddd:	c7 44 24 04 00 00 00 	movl   $0x0,0x4(%esp)
-80106de4:	00 
-80106de5:	89 04 24             	mov    %eax,(%esp)
-		shm_table.shm_pages[found_index].frame = kalloc();
-80106de8:	89 87 f8 54 11 80    	mov    %eax,-0x7feeab08(%edi)
-		memset(shm_table.shm_pages[found_index].frame, 0, PGSIZE);
-80106dee:	e8 9d d4 ff ff       	call   80104290 <memset>
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-80106df3:	a1 ec 54 11 80       	mov    0x801154ec,%eax
-80106df8:	c7 44 24 10 06 00 00 	movl   $0x6,0x10(%esp)
-80106dff:	00 
-80106e00:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
-80106e07:	00 
-80106e08:	05 00 00 00 80       	add    $0x80000000,%eax
-80106e0d:	89 44 24 0c          	mov    %eax,0xc(%esp)
-		uint va = PGROUNDUP(curproc->sz);
-80106e11:	8b 03                	mov    (%ebx),%eax
-80106e13:	8d 90 ff 0f 00 00    	lea    0xfff(%eax),%edx
-80106e19:	81 e2 00 f0 ff ff    	and    $0xfffff000,%edx
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-80106e1f:	89 54 24 04          	mov    %edx,0x4(%esp)
-80106e23:	8b 43 04             	mov    0x4(%ebx),%eax
-80106e26:	89 04 24             	mov    %eax,(%esp)
-80106e29:	e8 22 f7 ff ff       	call   80106550 <mappages>
-		shm_table.shm_pages[entry_index].refcnt++;
-80106e2e:	83 05 f0 54 11 80 01 	addl   $0x1,0x801154f0
-80106e35:	e9 48 ff ff ff       	jmp    80106d82 <shm_open+0x92>
-80106e3a:	8d b6 00 00 00 00    	lea    0x0(%esi),%esi
-		int found_index = -1;
-80106e40:	b9 ff ff ff ff       	mov    $0xffffffff,%ecx
-80106e45:	e9 7a ff ff ff       	jmp    80106dc4 <shm_open+0xd4>
-80106e4a:	8d b6 00 00 00 00    	lea    0x0(%esi),%esi
+			shm_table.shm_pages[i].id = id;
+80106dbd:	8d 3c 52             	lea    (%edx,%edx,2),%edi
+80106dc0:	c1 e7 02             	shl    $0x2,%edi
+80106dc3:	89 9f f4 54 11 80    	mov    %ebx,-0x7feeab0c(%edi)
+			shm_table.shm_pages[i].frame = kalloc();
+80106dc9:	e8 e2 b6 ff ff       	call   801024b0 <kalloc>
+80106dce:	8d 97 c8 54 11 80    	lea    -0x7feeab38(%edi),%edx
+			memset(shm_table.shm_pages[i].frame, 0, PGSIZE);
+80106dd4:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
+80106ddb:	00 
+80106ddc:	c7 44 24 04 00 00 00 	movl   $0x0,0x4(%esp)
+80106de3:	00 
+			shm_table.shm_pages[i].frame = kalloc();
+80106de4:	89 55 e4             	mov    %edx,-0x1c(%ebp)
+			memset(shm_table.shm_pages[i].frame, 0, PGSIZE);
+80106de7:	89 04 24             	mov    %eax,(%esp)
+			shm_table.shm_pages[i].frame = kalloc();
+80106dea:	89 87 f8 54 11 80    	mov    %eax,-0x7feeab08(%edi)
+			memset(shm_table.shm_pages[i].frame, 0, PGSIZE);
+80106df0:	e8 9b d4 ff ff       	call   80104290 <memset>
+			char* va = (char*)PGROUNDUP(curproc->sz);
+80106df5:	8b 06                	mov    (%esi),%eax
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+80106df7:	8b 55 e4             	mov    -0x1c(%ebp),%edx
+80106dfa:	c7 44 24 10 06 00 00 	movl   $0x6,0x10(%esp)
+80106e01:	00 
+			char* va = (char*)PGROUNDUP(curproc->sz);
+80106e02:	8d 98 ff 0f 00 00    	lea    0xfff(%eax),%ebx
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+80106e08:	8b 42 30             	mov    0x30(%edx),%eax
+			char* va = (char*)PGROUNDUP(curproc->sz);
+80106e0b:	81 e3 00 f0 ff ff    	and    $0xfffff000,%ebx
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+80106e11:	c7 44 24 08 00 10 00 	movl   $0x1000,0x8(%esp)
+80106e18:	00 
+80106e19:	89 5c 24 04          	mov    %ebx,0x4(%esp)
+80106e1d:	05 00 00 00 80       	add    $0x80000000,%eax
+80106e22:	89 44 24 0c          	mov    %eax,0xc(%esp)
+80106e26:	8b 46 04             	mov    0x4(%esi),%eax
+80106e29:	89 04 24             	mov    %eax,(%esp)
+80106e2c:	e8 1f f7 ff ff       	call   80106550 <mappages>
+			shm_table.shm_pages[i].refcnt = 1;
+80106e31:	c7 87 fc 54 11 80 01 	movl   $0x1,-0x7feeab04(%edi)
+80106e38:	00 00 00 
+80106e3b:	e9 30 ff ff ff       	jmp    80106d70 <shm_open+0x80>
+	release(&(shm_table.lock));
+80106e40:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
+80106e47:	e8 f4 d3 ff ff       	call   80104240 <release>
+	return 0; 
+80106e4c:	e9 36 ff ff ff       	jmp    80106d87 <shm_open+0x97>
+80106e51:	eb 0d                	jmp    80106e60 <shm_close>
+80106e53:	90                   	nop
+80106e54:	90                   	nop
+80106e55:	90                   	nop
+80106e56:	90                   	nop
+80106e57:	90                   	nop
+80106e58:	90                   	nop
+80106e59:	90                   	nop
+80106e5a:	90                   	nop
+80106e5b:	90                   	nop
+80106e5c:	90                   	nop
+80106e5d:	90                   	nop
+80106e5e:	90                   	nop
+80106e5f:	90                   	nop
 
-80106e50 <shm_close>:
+80106e60 <shm_close>:
 
 int shm_close(int id) {
-80106e50:	55                   	push   %ebp
-80106e51:	89 e5                	mov    %esp,%ebp
-80106e53:	53                   	push   %ebx
-80106e54:	83 ec 14             	sub    $0x14,%esp
-80106e57:	8b 5d 08             	mov    0x8(%ebp),%ebx
+80106e60:	55                   	push   %ebp
+80106e61:	89 e5                	mov    %esp,%ebp
+80106e63:	53                   	push   %ebx
+80106e64:	83 ec 14             	sub    $0x14,%esp
+80106e67:	8b 5d 08             	mov    0x8(%ebp),%ebx
 	// Find shm_page with matching id
 	acquire(&(shm_table.lock));
-80106e5a:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
-80106e61:	e8 ea d2 ff ff       	call   80104150 <acquire>
-80106e66:	ba f4 54 11 80       	mov    $0x801154f4,%edx
+80106e6a:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
+80106e71:	e8 da d2 ff ff       	call   80104150 <acquire>
+80106e76:	ba f4 54 11 80       	mov    $0x801154f4,%edx
+	
 	int i = 0;
 	int found_index = -1;
 	for (i = 0; i < 64; i++) {
-80106e6b:	31 c0                	xor    %eax,%eax
-80106e6d:	eb 0c                	jmp    80106e7b <shm_close+0x2b>
-80106e6f:	90                   	nop
-80106e70:	83 c0 01             	add    $0x1,%eax
-80106e73:	83 c2 0c             	add    $0xc,%edx
-80106e76:	83 f8 40             	cmp    $0x40,%eax
-80106e79:	74 45                	je     80106ec0 <shm_close+0x70>
+80106e7b:	31 c0                	xor    %eax,%eax
+80106e7d:	eb 0c                	jmp    80106e8b <shm_close+0x2b>
+80106e7f:	90                   	nop
+80106e80:	83 c0 01             	add    $0x1,%eax
+80106e83:	83 c2 0c             	add    $0xc,%edx
+80106e86:	83 f8 40             	cmp    $0x40,%eax
+80106e89:	74 1d                	je     80106ea8 <shm_close+0x48>
 		if(shm_table.shm_pages[i].id == id) {
-80106e7b:	39 1a                	cmp    %ebx,(%edx)
-80106e7d:	75 f1                	jne    80106e70 <shm_close+0x20>
-			break;
+80106e8b:	39 1a                	cmp    %ebx,(%edx)
+80106e8d:	75 f1                	jne    80106e80 <shm_close+0x20>
 		}
 	}
 
-	// Decrease refcount
-	shm_table.shm_pages[found_index].refcnt--;
-80106e7f:	8d 0c 40             	lea    (%eax,%eax,2),%ecx
-80106e82:	c1 e1 02             	shl    $0x2,%ecx
-80106e85:	8b 99 fc 54 11 80    	mov    -0x7feeab04(%ecx),%ebx
-80106e8b:	8d 53 ff             	lea    -0x1(%ebx),%edx
+	if (found_index != -1) {
+		// Decrease refcount
+		shm_table.shm_pages[found_index].refcnt--;
+80106e8f:	8d 0c 40             	lea    (%eax,%eax,2),%ecx
+80106e92:	c1 e1 02             	shl    $0x2,%ecx
+80106e95:	8d 81 cc 54 11 80    	lea    -0x7feeab34(%ecx),%eax
+80106e9b:	8b 58 30             	mov    0x30(%eax),%ebx
+80106e9e:	8d 53 ff             	lea    -0x1(%ebx),%edx
 	
-	// Nobody is referencing this shm_page -> clear it!
-	if (shm_table.shm_pages[found_index].refcnt == 0) {
-80106e8e:	85 d2                	test   %edx,%edx
-	shm_table.shm_pages[found_index].refcnt--;
-80106e90:	89 91 fc 54 11 80    	mov    %edx,-0x7feeab04(%ecx)
-	if (shm_table.shm_pages[found_index].refcnt == 0) {
-80106e96:	75 14                	jne    80106eac <shm_close+0x5c>
-		shm_table.shm_pages[found_index].id = 0;
-80106e98:	c7 81 f4 54 11 80 00 	movl   $0x0,-0x7feeab0c(%ecx)
-80106e9f:	00 00 00 
-    shm_table.shm_pages[found_index].refcnt = 0;
-80106ea2:	c7 81 fc 54 11 80 00 	movl   $0x0,-0x7feeab04(%ecx)
-80106ea9:	00 00 00 
+		// Nobody is referencing this shm_page -> clear it!
+		if (shm_table.shm_pages[found_index].refcnt < 1) {
+80106ea1:	85 d2                	test   %edx,%edx
+		shm_table.shm_pages[found_index].refcnt--;
+80106ea3:	89 50 30             	mov    %edx,0x30(%eax)
+		if (shm_table.shm_pages[found_index].refcnt < 1) {
+80106ea6:	7e 18                	jle    80106ec0 <shm_close+0x60>
+   		shm_table.shm_pages[found_index].frame = 0; 
+			shm_table.shm_pages[found_index].refcnt = 0;
+		}
 	}
 
 	release(&(shm_table.lock));
-80106eac:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
-80106eb3:	e8 88 d3 ff ff       	call   80104240 <release>
+80106ea8:	c7 04 24 c0 54 11 80 	movl   $0x801154c0,(%esp)
+80106eaf:	e8 8c d3 ff ff       	call   80104240 <release>
 	return 0; 
 }
-80106eb8:	83 c4 14             	add    $0x14,%esp
-80106ebb:	31 c0                	xor    %eax,%eax
-80106ebd:	5b                   	pop    %ebx
-80106ebe:	5d                   	pop    %ebp
-80106ebf:	c3                   	ret    
-	int found_index = -1;
-80106ec0:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
-80106ec5:	eb b8                	jmp    80106e7f <shm_close+0x2f>
+80106eb4:	83 c4 14             	add    $0x14,%esp
+80106eb7:	31 c0                	xor    %eax,%eax
+80106eb9:	5b                   	pop    %ebx
+80106eba:	5d                   	pop    %ebp
+80106ebb:	c3                   	ret    
+80106ebc:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
+			shm_table.shm_pages[found_index].id = 0;
+80106ec0:	c7 81 f4 54 11 80 00 	movl   $0x0,-0x7feeab0c(%ecx)
+80106ec7:	00 00 00 
+   		shm_table.shm_pages[found_index].frame = 0; 
+80106eca:	c7 81 f8 54 11 80 00 	movl   $0x0,-0x7feeab08(%ecx)
+80106ed1:	00 00 00 
+			shm_table.shm_pages[found_index].refcnt = 0;
+80106ed4:	c7 40 30 00 00 00 00 	movl   $0x0,0x30(%eax)
+80106edb:	eb cb                	jmp    80106ea8 <shm_close+0x48>

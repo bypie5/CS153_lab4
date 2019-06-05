@@ -31,56 +31,51 @@ void shminit() {
 int shm_open(int id, char **pointer) {
 	acquire(&(shm_table.lock));	
 
-	int id_exists = 0;
-	int entry_index = -1;
+	struct proc *curproc = myproc();
+
 	int i = 0;	
 	for (i = 0; i < 64; i++) {
 		if (id == shm_table.shm_pages[i].id) {
-			id_exists = 1;
-			entry_index = i;
-			break;
+			// Case 1
+			char* va = (char*)PGROUNDUP(curproc->sz);
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+			shm_table.shm_pages[i].refcnt++;
+
+			// Return the pointer to the virtual address
+			*pointer = va;
+
+			// Update sz
+			curproc->sz += PGSIZE;
+		
+			release(&(shm_table.lock));
+			return 0;	
 		}
 	}	
 
-	struct proc *curproc = myproc();
-
-	if (id_exists && entry_index != -1) {
-		// Case 1
-		uint va = PGROUNDUP(curproc->sz);
-		mappages(curproc->pgdir, (void*) va, PGSIZE, V2P(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-		shm_table.shm_pages[entry_index].refcnt++;
-
-		// Return the pointer to the virtual address
-		*pointer=(char *)va;
-
-		// Update sz
-		curproc->sz += PGSIZE;
-	} else {
-		// Case 2
-		// Shared memory segment does not exist, so we need to allocate	
+	// Case 2
+	// Shared memory segment does not exist, so we need to allocate	
+	for (i = 0; i < 64; i++) {
+		// This is an empty entry (newly initalized)
+		if (shm_table.shm_pages[i].id == 0) {
+			// Set values based on the arugments passed in
+			shm_table.shm_pages[i].id = id;
+			shm_table.shm_pages[i].frame = kalloc();
+			memset(shm_table.shm_pages[i].frame, 0, PGSIZE);
 		
-		// Find an empty entry
-		int i = 0;
-		int found_index = -1;
-		for (i = 0; i < 64; i++) {
-			// This is an empty entry (newly initalized)
-			if (shm_table.shm_pages[i].id == 0 && shm_table.shm_pages[i].refcnt == 0) {
-				found_index = i;
-				break;
-			}
+			// memmap and return pointer through parameter
+			char* va = (char*)PGROUNDUP(curproc->sz);
+			mappages(curproc->pgdir, va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+			shm_table.shm_pages[i].refcnt = 1;
+		
+			*pointer = va;
+	
+			curproc->sz += PGSIZE;
+
+			release(&(shm_table.lock));
+			return 0;
 		}
-		// Set values based on the arugments passed in
-		shm_table.shm_pages[found_index].id = id;
-		shm_table.shm_pages[found_index].frame = kalloc();
-		memset(shm_table.shm_pages[found_index].frame, 0, PGSIZE);
-		
-		// memmap and return pointer through parameter
-		uint va = PGROUNDUP(curproc->sz);
-		mappages(curproc->pgdir, (void*) va, PGSIZE, (uint) P2V(shm_table.shm_pages[entry_index].frame), PTE_W|PTE_U);
-		shm_table.shm_pages[entry_index].refcnt++;
-
 	}
-
+	
 	release(&(shm_table.lock));
 	return 0; 
 }
@@ -88,6 +83,7 @@ int shm_open(int id, char **pointer) {
 int shm_close(int id) {
 	// Find shm_page with matching id
 	acquire(&(shm_table.lock));
+	
 	int i = 0;
 	int found_index = -1;
 	for (i = 0; i < 64; i++) {
@@ -97,13 +93,16 @@ int shm_close(int id) {
 		}
 	}
 
-	// Decrease refcount
-	shm_table.shm_pages[found_index].refcnt--;
+	if (found_index != -1) {
+		// Decrease refcount
+		shm_table.shm_pages[found_index].refcnt--;
 	
-	// Nobody is referencing this shm_page -> clear it!
-	if (shm_table.shm_pages[found_index].refcnt == 0) {
-		shm_table.shm_pages[found_index].id = 0;
-    shm_table.shm_pages[found_index].refcnt = 0;
+		// Nobody is referencing this shm_page -> clear it!
+		if (shm_table.shm_pages[found_index].refcnt < 1) {
+			shm_table.shm_pages[found_index].id = 0;
+   		shm_table.shm_pages[found_index].frame = 0; 
+			shm_table.shm_pages[found_index].refcnt = 0;
+		}
 	}
 
 	release(&(shm_table.lock));

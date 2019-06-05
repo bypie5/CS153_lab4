@@ -44,5 +44,5 @@ shm_open(1,(char **)&counter);
 //shm_close: first process will just detach, next one will free up the shm_table entry (but for now not the page)
    shm_close(1);
    exit();
-   return 0;
+  // return 0;
 }
